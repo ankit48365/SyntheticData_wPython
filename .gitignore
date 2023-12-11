@@ -8,7 +8,7 @@ __pycache__/
 
 # ankit specific
 *.ini
-*1.py
+1.py
 connector.old
 
 # Distribution / packaging
