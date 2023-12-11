@@ -1,9 +1,12 @@
 Package           Version
 ----------------- -------
+cffi              1.16.0
 configparser      6.0.0
-cx-Oracle         8.3.0
+cryptography      41.0.7
 greenlet          3.0.2
+oracledb          1.4.2
 pip               23.3.1
+pycparser         2.21
 pyodbc            5.0.1
 SQLAlchemy        2.0.23
 typing_extensions 4.9.0

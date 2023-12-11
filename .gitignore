@@ -6,6 +6,11 @@ __pycache__/
 # C extensions
 *.so
 
+# ankit specific
+*.ini
+*1.py
+connector.old
+
 # Distribution / packaging
 .Python
 build/

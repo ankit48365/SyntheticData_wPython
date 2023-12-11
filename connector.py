@@ -1,6 +1,8 @@
 import os
 import configparser
-import cx_Oracle
+import oracledb
+import getpass #no pip install required for this, reason below
+# The getpass module is part of the Python Standard Library, which means it comes pre-installed with Python and you don’t need to install it separately. You can directly import it in your script using import getpass
 
 def connect_to_sql_server():
     config = configparser.ConfigParser()
@@ -32,7 +34,6 @@ def _load_config(config, config_file_path):
 
 
 def _create_new_connection(config, config_file_path):
-    """Creates a new connection profile and saves it to the config file."""
     profile_name = input("Enter profile name: ")
 
     # Check for duplicate profile names
@@ -42,30 +43,39 @@ def _create_new_connection(config, config_file_path):
 
     config[profile_name] = {}
 
-    # Prompt for connection details
-    server_name = input("Server Name: ")
-    username = input("Username: ")
-    password = input("Password: ")
-    database_name = input("Database Name: ")
-    schema = input("Schema (optional): ")
-
-    # Determine connection type (SQL Server or Oracle)
     connection_type = input("Connection Type (sqlserver or oracle): ")
 
-    # Validate connection details
-    try:
-        _validate_connection(connection_type, server_name, username, password, database_name)
-    except Exception as e:
-        print(f"Error: {e}")
-        return
+    if connection_type.lower() == "sqlserver":
+        # Prompt for SQL Server details
+        server_name = input("Server Name: ")
+        username = input("Username: ")
+        password = getpass.getpass("Password: ")
+        database_name = input("Database Name: ")
 
-    # Save connection details
-    config[profile_name]["server_name"] = server_name
-    config[profile_name]["username"] = username
-    config[profile_name]["password"] = password
-    config[profile_name]["database_name"] = database_name
-    config[profile_name]["schema"] = schema
-    config[profile_name]["connection_type"] = connection_type
+        # Validate and save connection details
+        _validate_connection(connection_type, server_name, username, password, database_name)
+        config[profile_name]["server_name"] = server_name
+        config[profile_name]["username"] = username
+        config[profile_name]["password"] = password
+        config[profile_name]["database_name"] = database_name
+        config[profile_name]["connection_type"] = connection_type
+
+    elif connection_type.lower() == "oracle":
+        # Prompt for Oracle details
+        dsn = input("DSN(host:port/Service Name): ")
+        username = input("Username: ")
+        password = getpass.getpass("Password: ")
+
+        # Validate and save connection details
+        _validate_connection(connection_type, dsn, username, password)
+        config[profile_name]["username"] = username
+        config[profile_name]["password"] = password
+        config[profile_name]["dsn"] = dsn
+        config[profile_name]["connection_type"] = connection_type
+
+    else:
+        print(f"Invalid connection type: '{connection_type}'.")
+        return
 
     with open(config_file_path, "w") as f:
         config.write(f)
@@ -102,38 +112,77 @@ def _load_existing_connection(config):
     profile_name = available_connections[index]
     print(f"Loading connection profile: '{profile_name}'")
 
+        # _validate_connection(connection_type, server_name, username, password, database_name)
+        # _validate_connection(connection_type, dsn, username, password)
 
-def _validate_connection(connection_type, server_name, username, password, database_name):
+def _validate_connection(*args):
+    connection_type = args[0]
+
     """
     Validates the connection details for specific connection type.
     Currently supports SQL Server and Oracle.
     """
     if connection_type.lower() == "sqlserver":
+        server_name = args[1]
+        username = args[2]
+        password = args[3]
+        database_name = args[4]
         import pyodbc
         try:
-            connection = pyodbc.connect(
-                # f"DRIVER={{SQL Server Native Client 11.0}};SERVER={server_name};UID={username};PWD={password};DATABASE={database_name};"
-                f"DRIVER={{ODBC Driver 17 for SQL Server}};SERVER={server_name};UID={username};PWD={password};DATABASE={database_name};"
-
-            )
-            cursor = connection.cursor()
-            cursor.execute("SELECT 1")
-            connection.close()
+                connection = pyodbc.connect(
+                    f"DRIVER={{ODBC Driver 17 for SQL Server}};SERVER={server_name};UID={username};PWD={password};DATABASE={database_name};"
+                )
+                cursor = connection.cursor()
+                cursor.execute("SELECT 1")
+                connection.close()
         except Exception as e:
-            raise ValueError(f"Connection failed: {e}")
+                raise ValueError(f"Connection failed: {e}")
     elif connection_type.lower() == "oracle":
-        import cx_Oracle
-        try:
-            connection = cx_Oracle.connect(username, password, database_name)
-            cursor = connection.cursor()
-            cursor.execute("SELECT 1 FROM DUAL")
-            connection.close()
-        except Exception as e:
-            raise ValueError(f"Connection failed: {e}")
+        import oracledb
+        if len(args) == 4:
+            # Assume DSN is provided as a single argument
+            dsn = args[1]
+            username = args[2]
+            password = args[3]
+            
+            try:
+                connection = oracledb.connect(user=username, password=password, dsn=dsn)
+                cursor = connection.cursor()
+                cursor.execute("SELECT 1 FROM DUAL")
+                connection.close()
+            except Exception as e:
+                raise ValueError(f"Connection failed: {e}")
+        else:
+            raise ValueError("Invalid number of arguments for Oracle connection.")
     else:
         raise ValueError("Invalid connection type.")
 
     print("Connection successful!")
+
+
+    # elif connection_type.lower() == "oracle":
+    #     import oracledb
+    #     try:
+    #         # Build connection string
+    #         connection_string = f"oracle://{username}:{password}@{server_name}/{database_name}"
+    #         # connection_string = f"oracle://{username}:{password}@{server_name}"
+
+
+    #         # Connect
+    #         connection = oracledb.connect(connection_string)
+
+    #         # Execute test query
+    #         cursor = connection.cursor()
+    #         cursor.execute("SELECT 1 FROM DUAL")
+
+    #         # Close connection
+    #         connection.close()
+    #     except Exception as e:
+    #         raise ValueError(f"Connection failed: {e}")
+    # else:
+    #     raise ValueError("Invalid connection type.")
+
+    # print("Connection successful!")
 
 def connect_to_sql_server():
     config = configparser.ConfigParser()
